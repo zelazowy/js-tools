@@ -10,6 +10,8 @@ const OVERRIDE_SHEET = true;
 const EMAIL_SUBJECT_FILTER = 'Your daily data export is ready';
 // Define the specific sender's email to filter for
 const SENDER_EMAIL = 'support@northbeam.io';
+// Define receiver email that is used for finding email with export data, like name.surname+alias@gmail.com
+const RECEIVER_EMAIL = '';
 
 // entrypoint
 function doGet(e) {
@@ -26,7 +28,7 @@ function doGet(e) {
 // Function to find emails with specific subject and specific sender, and process the CSV link
 function importCSVFromEmail() {
   // Search for unread emails with the specified subject and sender
-  const threads = GmailApp.search(`subject:/.*${EMAIL_SUBJECT_FILTER}.*/ from:${SENDER_EMAIL} is:unread`);
+  const threads = GmailApp.search(`subject:/.*${EMAIL_SUBJECT_FILTER}.*/ from:${SENDER_EMAIL} to:${RECEIVER_EMAIL} is:unread`);
 
   // Process each email thread
   threads.forEach(thread => {
