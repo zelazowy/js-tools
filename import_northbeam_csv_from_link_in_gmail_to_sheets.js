@@ -9,7 +9,7 @@ const OVERRIDE_SHEET = true;
 // Define the subject line filter to detect emails
 const EMAIL_SUBJECT_FILTER = 'Your daily data export is ready';
 // Define the specific sender's email to filter for
-const SENDER_EMAIL = '';
+const SENDER_EMAIL = 'support@northbeam.io';
 
 // entrypoint
 function doGet(e) {
