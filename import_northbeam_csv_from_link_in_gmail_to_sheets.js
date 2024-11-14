@@ -12,20 +12,6 @@ const EMAIL_SUBJECT_FILTER = 'Your daily data export is ready';
 const SENDER_EMAIL = 'support@northbeam.io';
 // Define receiver email that is used for finding email with export data, like name.surname+alias@gmail.com
 const RECEIVER_EMAIL = '';
-// created by <3 with chatgp
-
-// Replace 'YOUR_SHEET_ID' with your actual Google Sheets ID.
-const SHEET_ID = '1oDpZf5oxWcV5Z91TRS3hgJGFaG4UmaDF2alWbnmIxvI';
-// Sheet name if you want exports to override previous one
-const SHEET_NAME = 'Sheet1';
-// Specify if you want to override data in one sheet or create new sheet for every export
-const OVERRIDE_SHEET = false;
-// Define the subject line filter to detect emails
-const EMAIL_SUBJECT_FILTER = 'Your daily data export is ready';
-// Define the specific sender's email to filter for
-const SENDER_EMAIL = 'viktoras@moerie.com';
-// Define export name from northbeam
-const EXPORT_NAME = 'MO_DE_L7D_Daily';
 
 // Entry point for the web app
 function doGet() {
