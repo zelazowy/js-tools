@@ -10,8 +10,8 @@ const OVERRIDE_SHEET = true;
 const EMAIL_SUBJECT_FILTER = 'Your daily data export is ready';
 // Define the specific sender's email to filter for
 const SENDER_EMAIL = 'support@northbeam.io';
-// Define receiver email that is used for finding email with export data, like name.surname+alias@gmail.com
-const RECEIVER_EMAIL = '';
+// Define export name from northbeam
+const EXPORT_NAME = '';
 
 // Entry point for the web app
 function doGet() {
