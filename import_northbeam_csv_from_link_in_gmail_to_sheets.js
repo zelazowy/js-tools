@@ -2,16 +2,12 @@
 
 // Replace 'YOUR_SHEET_ID' with your actual Google Sheets ID.
 const SHEET_ID = '';
-// Sheet name if you want exports to override previous one
-const SHEET_NAME = 'Sheet1';
-// Specify if you want to override data in one sheet or create new sheet for every export
-const OVERRIDE_SHEET = true;
 // Define the subject line filter to detect emails
 const EMAIL_SUBJECT_FILTER = 'Your daily data export is ready';
 // Define the specific sender's email to filter for
 const SENDER_EMAIL = 'support@northbeam.io';
-// Define export name from northbeam
-const EXPORT_NAME = '';
+// List of export names to process
+const EXPORT_NAMES = ['MO_SPRAY_L7D_Daily', 'MO_PILLS_L7D_Daily', 'MO_DE_L7D_Daily'];
 
 // Entry point for the web app
 function doGet() {
@@ -23,30 +19,39 @@ function doGet() {
   }
 }
 
-// Main function to find relevant emails and import CSV data from email link
+// Main function to process all relevant messages in threads
 function importCSVFromEmail() {
   const threads = GmailApp.search(`subject:"${EMAIL_SUBJECT_FILTER}" from:${SENDER_EMAIL} is:unread`);
-  
+
   threads.forEach(thread => {
+    let threadProcessed = false; // Track if the thread was processed
+
     const messages = thread.getMessages();
     messages.forEach(message => {
       const body = message.getBody();
-      const csvLink = extractCSVLink(body);
-      
-      if (csvLink) {
-        const csvData = fetchCSVData(csvLink);
-        if (csvData) {
-          insertDataIntoSheet(csvData);
-          message.markRead();  // Mark as read after successful processing
+
+      EXPORT_NAMES.forEach(exportName => {
+        const csvLink = extractCSVLink(body, exportName);
+        if (csvLink) {
+          const csvData = fetchCSVData(csvLink);
+          if (csvData) {
+            insertDataIntoSheet(csvData, exportName);
+            threadProcessed = true;
+          }
         }
-      }
+      });
     });
+
+    // Mark the thread as read if any message was processed
+    if (threadProcessed) {
+      thread.markRead();
+    }
   });
 }
 
-// Extracts CSV link from email body content based on specific export name
-function extractCSVLink(body) {
-  const urlPattern = new RegExp(`https:\/\/storage\\.googleapis\\.com\/[^\\s]+${EXPORT_NAME}[^\\s]*\\.csv(\\?[^<\\s]*)?`, 'g');
+// Extracts CSV link matching a specific export name
+function extractCSVLink(body, exportName) {
+  const urlPattern = new RegExp(`https:\/\/storage\\.googleapis\\.com\/[^\\s]+${exportName}[^\\s]*\\.csv(\\?[^<\\s]*)?`, 'g');
   const matches = body.match(urlPattern);
   if (matches) {
     let url = matches[0].replace(/&amp;/g, '&');
@@ -68,36 +73,36 @@ function fetchCSVData(url) {
   }
 }
 
-// Inserts CSV data into Google Sheet, either in a new or existing sheet
-function insertDataIntoSheet(data) {
+// Inserts CSV data into a Google Sheet, creating a new sheet for each export
+function insertDataIntoSheet(data, exportName) {
   const spreadsheet = SpreadsheetApp.openById(SHEET_ID);
-  
-  if (OVERRIDE_SHEET) {
-    const sheet = spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.insertSheet(SHEET_NAME);
-    sheet.clear();
-    sheet.getRange(1, 1, data.length, data[0].length).setValues(data);
-  } else {
-    const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
-    let sheetName = `Imported_${timestamp}`;
-    
-    // Ensure unique sheet name in case of duplicates
-    let sheet = spreadsheet.getSheetByName(sheetName);
-    let counter = 1;
-    while (sheet) {
-      sheetName = `Imported_${timestamp}_${counter++}`;
-      sheet = spreadsheet.getSheetByName(sheetName);
-    }
-    
-    sheet = spreadsheet.insertSheet(sheetName);
-    sheet.getRange(1, 1, data.length, data[0].length).setValues(data);
+
+  // Get the current date in `YYYY-MM-DD` format
+  const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+
+  // Construct a sheet name with the export name and timestamp
+  let sheetName = `${exportName}_${timestamp}`;
+  let sheet = spreadsheet.getSheetByName(sheetName);
+
+  // Ensure unique sheet name in case of duplicates
+  let counter = 1;
+  while (sheet) {
+    sheetName = `${exportName}_${timestamp}_${counter++}`;
+    sheet = spreadsheet.getSheetByName(sheetName);
   }
+
+  // Create the new sheet with the unique name
+  sheet = spreadsheet.insertSheet(sheetName);
+
+  // Insert data into the new sheet
+  sheet.getRange(1, 1, data.length, data[0].length).setValues(data);
 }
 
 // Helper function to sanitize and reconstruct URL if needed
 function sanitizeUrl(url) {
   const [baseUrl, queryString] = url.split('?');
   if (!queryString) return baseUrl;
-  
+
   const queryParams = queryString.split('&').reduce((params, param) => {
     const [key, value] = param.split('=');
     params[decodeURIComponent(key)] = value ? decodeURIComponent(value) : '';
