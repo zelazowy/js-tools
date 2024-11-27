@@ -1,13 +1,18 @@
 // created by <3 with chatgp
 
-// Replace 'YOUR_SHEET_ID' with your actual Google Sheets ID.
-const SHEET_ID = '';
-// Define the subject line filter to detect emails
+// Mapping of export names to spreadsheet IDs
+const EXPORT_MAPPING = {
+  'MO_SPRAY_L7D_Daily': 'sheet_1',
+  'MO_PILLS_L7D_Daily': 'sheet_2',
+  'MO_DE_L7D_Daily': 'sheet_3'
+};
+
+// Specify if data should override existing content or create a new sheet
+const OVERRIDE_SHEET = true;
+
+// Email filters
 const EMAIL_SUBJECT_FILTER = 'Your daily data export is ready';
-// Define the specific sender's email to filter for
 const SENDER_EMAIL = 'support@northbeam.io';
-// List of export names to process
-const EXPORT_NAMES = ['MO_SPRAY_L7D_Daily', 'MO_PILLS_L7D_Daily', 'MO_DE_L7D_Daily'];
 
 // Entry point for the web app
 function doGet() {
@@ -30,12 +35,13 @@ function importCSVFromEmail() {
     messages.forEach(message => {
       const body = message.getBody();
 
-      EXPORT_NAMES.forEach(exportName => {
+      Object.keys(EXPORT_MAPPING).forEach(exportName => {
         const csvLink = extractCSVLink(body, exportName);
         if (csvLink) {
           const csvData = fetchCSVData(csvLink);
           if (csvData) {
-            insertDataIntoSheet(csvData, exportName);
+            const targetSheetId = EXPORT_MAPPING[exportName];
+            insertDataIntoSpreadsheet(csvData, targetSheetId, exportName);
             threadProcessed = true;
           }
         }
@@ -73,29 +79,30 @@ function fetchCSVData(url) {
   }
 }
 
-// Inserts CSV data into a Google Sheet, creating a new sheet for each export
-function insertDataIntoSheet(data, exportName) {
-  const spreadsheet = SpreadsheetApp.openById(SHEET_ID);
+// Inserts CSV data into a target spreadsheet
+function insertDataIntoSpreadsheet(data, sheetId, exportName) {
+  const spreadsheet = SpreadsheetApp.openById(sheetId);
 
-  // Get the current date in `YYYY-MM-DD` format
-  const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+  if (OVERRIDE_SHEET) {
+    const sheet = spreadsheet.getActiveSheet(); // Use the default active sheet
+    sheet.clear();
+    sheet.getRange(1, 1, data.length, data[0].length).setValues(data);
+  } else {
+    const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+    let sheetName = `${exportName}_${timestamp}`;
+    let sheet = spreadsheet.getSheetByName(sheetName);
 
-  // Construct a sheet name with the export name and timestamp
-  let sheetName = `${exportName}_${timestamp}`;
-  let sheet = spreadsheet.getSheetByName(sheetName);
+    // Ensure unique sheet name
+    let counter = 1;
+    while (sheet) {
+      sheetName = `${exportName}_${timestamp}_${counter++}`;
+      sheet = spreadsheet.getSheetByName(sheetName);
+    }
 
-  // Ensure unique sheet name in case of duplicates
-  let counter = 1;
-  while (sheet) {
-    sheetName = `${exportName}_${timestamp}_${counter++}`;
-    sheet = spreadsheet.getSheetByName(sheetName);
+    // Create a new sheet and insert data
+    sheet = spreadsheet.insertSheet(sheetName);
+    sheet.getRange(1, 1, data.length, data[0].length).setValues(data);
   }
-
-  // Create the new sheet with the unique name
-  sheet = spreadsheet.insertSheet(sheetName);
-
-  // Insert data into the new sheet
-  sheet.getRange(1, 1, data.length, data[0].length).setValues(data);
 }
 
 // Helper function to sanitize and reconstruct URL if needed
